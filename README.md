@@ -8,7 +8,8 @@ Typing-powered desktop widget for Windows. A single Wackppu Ball floats on top o
 - Global key press counting without reading typed text
 - Gradual visual cracking while typing
 - Break animation and refill
-- Optional local ASMR MP3 support
+- Bundled Wackppu crunch ASMR sound
+- Optional local MP3 replacement support
 - Fallback generated crunch sound when no MP3 is provided
 
 ## Download
@@ -41,15 +42,17 @@ If you are using the Codex bundled Python in this workspace:
 - Right-click: quit menu
 - `Ctrl + Shift + Q`: quit
 
-## Optional Custom Sound
+## Sound Asset
 
-The public build does not include third-party MP3 files. To use your own sound locally, place this file next to the executable:
+The release build includes `assets/sounds/wakppu-asmr-source.mp3`.
+
+If you replace the sound, only commit audio that you own or have permission to redistribute. The app also looks for a local replacement next to the executable:
 
 ```text
 assets/sounds/wakppu-asmr-source.mp3
 ```
 
-If that file is missing, the app uses its built-in fallback crunch sound.
+If that file is missing or cannot be loaded, the app uses its built-in fallback crunch sound.
 
 You can preview sound behavior from source:
 

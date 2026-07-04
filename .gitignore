@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+build/
+dist/
+*.spec
+
+*.mp3
+# The bundled Wackppu crunch sample is cleared for redistribution.
+!assets/sounds/wakppu-asmr-source.mp3
+.wakppu-widget.json
+assets/wakppu-ball-source.png
+!assets/sounds/.gitkeep
