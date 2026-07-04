@@ -17,9 +17,10 @@ from tkinter import Menu, TclError
 import tkinter as tk
 
 try:
-    from PIL import Image, ImageTk
+    from PIL import Image, ImageFilter, ImageTk
 except Exception:  # pragma: no cover - optional runtime fallback
     Image = None
+    ImageFilter = None
     ImageTk = None
 
 if sys.platform == "win32":
@@ -327,6 +328,7 @@ class WakppuWidget:
 
         if Image is not None and ImageTk is not None:
             image = Image.open(ASSET_PATH).convert("RGBA")
+            image = self._remove_chroma_background(image)
             bbox = image.getbbox()
             if bbox:
                 image = image.crop(bbox)
@@ -613,6 +615,60 @@ class WakppuWidget:
         alpha = alpha.point(lambda value: 255 if value >= 118 else 0)
         return Image.merge("RGBA", (red, green, blue, alpha))
 
+    @staticmethod
+    def _remove_chroma_background(image):
+        if Image is None or ImageFilter is None:
+            return image
+
+        width, height = image.size
+        pixels = image.load()
+
+        def is_background_green(x: int, y: int) -> bool:
+            red, green, blue, alpha = pixels[x, y]
+            return (
+                alpha > 0
+                and green > 135
+                and red < 135
+                and blue < 135
+                and green > max(red, blue) + 55
+            )
+
+        mask = Image.new("L", image.size, 0)
+        mask_pixels = mask.load()
+        queue: deque[tuple[int, int]] = deque()
+
+        def mark(x: int, y: int) -> None:
+            if is_background_green(x, y) and not mask_pixels[x, y]:
+                mask_pixels[x, y] = 255
+                queue.append((x, y))
+
+        for x in range(width):
+            mark(x, 0)
+            mark(x, height - 1)
+        for y in range(height):
+            mark(0, y)
+            mark(width - 1, y)
+
+        if not queue:
+            return image
+
+        while queue:
+            x, y = queue.popleft()
+            for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                if 0 <= nx < width and 0 <= ny < height:
+                    mark(nx, ny)
+
+        mask = mask.filter(ImageFilter.MaxFilter(5))
+        mask_pixels = mask.load()
+        cleaned = image.copy()
+        cleaned_pixels = cleaned.load()
+        for y in range(height):
+            for x in range(width):
+                if mask_pixels[x, y] > 0:
+                    cleaned_pixels[x, y] = (0, 0, 0, 0)
+
+        return cleaned
+
     def _start_drag(self, event: tk.Event) -> None:
         self.drag_origin = (event.x_root - self.root.winfo_x(), event.y_root - self.root.winfo_y())
 
@@ -705,6 +761,26 @@ class WakppuWidget:
 def self_test() -> None:
     if not ASSET_PATH.exists():
         raise SystemExit(f"Missing asset: {ASSET_PATH}")
+
+    if Image is not None:
+        image = Image.open(ASSET_PATH).convert("RGBA")
+        get_pixels = getattr(image, "get_flattened_data", image.getdata)
+        pixels = list(get_pixels())
+        transparent_pixels = sum(1 for *_, alpha in pixels if alpha == 0)
+        if transparent_pixels == 0:
+            raise SystemExit("Ball asset has no transparent background")
+
+        green_pixels = sum(
+            1
+            for red, green, blue, alpha in pixels
+            if alpha > 0
+            and green > 135
+            and red < 135
+            and blue < 135
+            and green > max(red, blue) + 55
+        )
+        if green_pixels:
+            raise SystemExit("Ball asset still has opaque chroma-green pixels")
 
     sound = CrackSound()
     if sound._source_path.exists() and sys.platform == "win32" and sound._source_ms <= 900:
