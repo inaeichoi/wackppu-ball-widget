@@ -25,7 +25,7 @@ jobs:
       - name: Install build dependencies
         run: python -m pip install --upgrade pip pyinstaller Pillow
 
-      - name: Build executable
+      - name: Build typing executable
         run: >
           pyinstaller
           --noconfirm
@@ -37,26 +37,57 @@ jobs:
           --add-data "assets/sounds/wakppu-asmr-source.mp3;assets/sounds"
           wakppu_widget.py
 
-      - name: Add launch helper
+      - name: Build click executable
+        run: >
+          pyinstaller
+          --noconfirm
+          --clean
+          --onefile
+          --windowed
+          --name WackppuBallClickWidget
+          --add-data "assets/wakppu-ball.png;assets"
+          --add-data "assets/sounds/wakppu-asmr-source.mp3;assets/sounds"
+          wakppu_click_widget.py
+
+      - name: Package Windows apps
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force package | Out-Null
-          Copy-Item dist/WackppuBallWidget.exe package/WackppuBallWidget.exe
-          @'
-          @echo off
-          start "" "%~dp0WackppuBallWidget.exe"
-          '@ | Set-Content -Encoding ASCII package/run-widget.bat
-          Compress-Archive -Path package/* -DestinationPath WackppuBallWidget-windows.zip -Force
+          New-Item -ItemType Directory -Force package-typing | Out-Null
+          Copy-Item dist/WackppuBallWidget.exe package-typing/WackppuBallWidget.exe
+          Set-Content -Encoding ASCII package-typing/run-widget.bat -Value @(
+            '@echo off'
+            'start "" "%~dp0WackppuBallWidget.exe"'
+          )
 
-      - name: Upload build artifact
+          New-Item -ItemType Directory -Force package-click | Out-Null
+          Copy-Item dist/WackppuBallClickWidget.exe package-click/WackppuBallClickWidget.exe
+          Set-Content -Encoding ASCII package-click/run-click-widget.bat -Value @(
+            '@echo off'
+            'start "" "%~dp0WackppuBallClickWidget.exe"'
+          )
+
+          Compress-Archive -Path package-typing/* -DestinationPath WackppuBallWidget-windows.zip -Force
+          Compress-Archive -Path package-click/* -DestinationPath WackppuBallClickWidget-windows.zip -Force
+
+      - name: Upload typing build artifact
         uses: actions/upload-artifact@v4
         with:
           name: WackppuBallWidget-windows
           path: WackppuBallWidget-windows.zip
+
+      - name: Upload click build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WackppuBallClickWidget-windows
+          path: WackppuBallClickWidget-windows.zip
 
       - name: Create GitHub release for tags
         if: startsWith(github.ref, 'refs/tags/')
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${env:GITHUB_REF_NAME}" WackppuBallWidget-windows.zip --generate-notes
+        run: >
+          gh release create "${env:GITHUB_REF_NAME}"
+          WackppuBallWidget-windows.zip
+          WackppuBallClickWidget-windows.zip
+          --generate-notes
