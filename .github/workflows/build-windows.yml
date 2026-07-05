@@ -25,7 +25,7 @@ jobs:
       - name: Install build dependencies
         run: python -m pip install --upgrade pip pyinstaller Pillow
 
-      - name: Build executable
+      - name: Build typing executable
         run: >
           pyinstaller
           --noconfirm
@@ -37,15 +37,32 @@ jobs:
           --add-data "assets/sounds/wakppu-asmr-source.mp3;assets/sounds"
           wakppu_widget.py
 
-      - name: Add launch helper
+      - name: Build click executable
+        run: >
+          pyinstaller
+          --noconfirm
+          --clean
+          --onefile
+          --windowed
+          --name WackppuBallClickWidget
+          --add-data "assets/wakppu-ball.png;assets"
+          --add-data "assets/sounds/wakppu-asmr-source.mp3;assets/sounds"
+          wakppu_click_widget.py
+
+      - name: Package Windows app
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force package | Out-Null
           Copy-Item dist/WackppuBallWidget.exe package/WackppuBallWidget.exe
-          @'
-          @echo off
-          start "" "%~dp0WackppuBallWidget.exe"
-          '@ | Set-Content -Encoding ASCII package/run-widget.bat
+          Copy-Item dist/WackppuBallClickWidget.exe package/WackppuBallClickWidget.exe
+          Set-Content -Encoding ASCII package/run-widget.bat -Value @(
+            '@echo off'
+            'start "" "%~dp0WackppuBallWidget.exe"'
+          )
+          Set-Content -Encoding ASCII package/run-click-widget.bat -Value @(
+            '@echo off'
+            'start "" "%~dp0WackppuBallClickWidget.exe"'
+          )
           Compress-Archive -Path package/* -DestinationPath WackppuBallWidget-windows.zip -Force
 
       - name: Upload build artifact
